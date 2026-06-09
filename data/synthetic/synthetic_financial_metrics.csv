@@ -1,0 +1,49 @@
+company_id,company_name,period_id,period_label,metric_name,metric_value,currency,source_document,extraction_method,confidence_score,is_synthetic
+1,Aurora Manufacturing,1,FY2024,revenue,2800000000.0,TRY,synthetic_financial_statement_FY2024_aurora_manufacturing,synthetic,1.0,True
+1,Aurora Manufacturing,1,FY2024,gross_profit,840000000.0,TRY,synthetic_financial_statement_FY2024_aurora_manufacturing,synthetic,1.0,True
+1,Aurora Manufacturing,1,FY2024,operating_profit,392000000.0,TRY,synthetic_financial_statement_FY2024_aurora_manufacturing,synthetic,1.0,True
+1,Aurora Manufacturing,1,FY2024,net_income,224000000.0,TRY,synthetic_financial_statement_FY2024_aurora_manufacturing,synthetic,1.0,True
+1,Aurora Manufacturing,1,FY2024,total_assets,5600000000.0,TRY,synthetic_financial_statement_FY2024_aurora_manufacturing,synthetic,1.0,True
+1,Aurora Manufacturing,1,FY2024,total_debt,1400000000.0,TRY,synthetic_financial_statement_FY2024_aurora_manufacturing,synthetic,1.0,True
+1,Aurora Manufacturing,1,FY2024,cash,336000000.0,TRY,synthetic_financial_statement_FY2024_aurora_manufacturing,synthetic,1.0,True
+1,Aurora Manufacturing,1,FY2024,operating_cash_flow,308000000.0,TRY,synthetic_financial_statement_FY2024_aurora_manufacturing,synthetic,1.0,True
+1,Aurora Manufacturing,2,FY2025,revenue,3304000000.0,TRY,synthetic_financial_statement_FY2025_aurora_manufacturing,synthetic,1.0,True
+1,Aurora Manufacturing,2,FY2025,gross_profit,991200000.0,TRY,synthetic_financial_statement_FY2025_aurora_manufacturing,synthetic,1.0,True
+1,Aurora Manufacturing,2,FY2025,operating_profit,462560000.0,TRY,synthetic_financial_statement_FY2025_aurora_manufacturing,synthetic,1.0,True
+1,Aurora Manufacturing,2,FY2025,net_income,264320000.0,TRY,synthetic_financial_statement_FY2025_aurora_manufacturing,synthetic,1.0,True
+1,Aurora Manufacturing,2,FY2025,total_assets,6440000000.0,TRY,synthetic_financial_statement_FY2025_aurora_manufacturing,synthetic,1.0,True
+1,Aurora Manufacturing,2,FY2025,total_debt,1610000000.0,TRY,synthetic_financial_statement_FY2025_aurora_manufacturing,synthetic,1.0,True
+1,Aurora Manufacturing,2,FY2025,cash,450000000.0,TRY,synthetic_financial_statement_FY2025_aurora_manufacturing,synthetic,1.0,True
+1,Aurora Manufacturing,2,FY2025,operating_cash_flow,363440000.0,TRY,synthetic_financial_statement_FY2025_aurora_manufacturing,synthetic,1.0,True
+2,Nova Retail Group,1,FY2024,revenue,4200000000.0,TRY,synthetic_financial_statement_FY2024_nova_retail_group,synthetic,1.0,True
+2,Nova Retail Group,1,FY2024,gross_profit,1008000000.0,TRY,synthetic_financial_statement_FY2024_nova_retail_group,synthetic,1.0,True
+2,Nova Retail Group,1,FY2024,operating_profit,336000000.0,TRY,synthetic_financial_statement_FY2024_nova_retail_group,synthetic,1.0,True
+2,Nova Retail Group,1,FY2024,net_income,168000000.0,TRY,synthetic_financial_statement_FY2024_nova_retail_group,synthetic,1.0,True
+2,Nova Retail Group,1,FY2024,total_assets,7350000000.0,TRY,synthetic_financial_statement_FY2024_nova_retail_group,synthetic,1.0,True
+2,Nova Retail Group,1,FY2024,total_debt,2940000000.0,TRY,synthetic_financial_statement_FY2024_nova_retail_group,synthetic,1.0,True
+2,Nova Retail Group,1,FY2024,cash,588000000.0,TRY,synthetic_financial_statement_FY2024_nova_retail_group,synthetic,1.0,True
+2,Nova Retail Group,1,FY2024,operating_cash_flow,252000000.0,TRY,synthetic_financial_statement_FY2024_nova_retail_group,synthetic,1.0,True
+2,Nova Retail Group,2,FY2025,revenue,4704000000.0,TRY,synthetic_financial_statement_FY2025_nova_retail_group,synthetic,1.0,True
+2,Nova Retail Group,2,FY2025,gross_profit,1128960000.0,TRY,synthetic_financial_statement_FY2025_nova_retail_group,synthetic,1.0,True
+2,Nova Retail Group,2,FY2025,operating_profit,376320000.0,TRY,synthetic_financial_statement_FY2025_nova_retail_group,synthetic,1.0,True
+2,Nova Retail Group,2,FY2025,net_income,188160000.0,TRY,synthetic_financial_statement_FY2025_nova_retail_group,synthetic,1.0,True
+2,Nova Retail Group,2,FY2025,total_assets,8232000000.0,TRY,synthetic_financial_statement_FY2025_nova_retail_group,synthetic,1.0,True
+2,Nova Retail Group,2,FY2025,total_debt,3292800000.0,TRY,synthetic_financial_statement_FY2025_nova_retail_group,synthetic,1.0,True
+2,Nova Retail Group,2,FY2025,cash,705600000.0,TRY,synthetic_financial_statement_FY2025_nova_retail_group,synthetic,1.0,True
+2,Nova Retail Group,2,FY2025,operating_cash_flow,282240000.0,TRY,synthetic_financial_statement_FY2025_nova_retail_group,synthetic,1.0,True
+3,Atlas Energy Systems,1,FY2024,revenue,6500000000.0,TRY,synthetic_financial_statement_FY2024_atlas_energy_systems,synthetic,1.0,True
+3,Atlas Energy Systems,1,FY2024,gross_profit,2275000000.0,TRY,synthetic_financial_statement_FY2024_atlas_energy_systems,synthetic,1.0,True
+3,Atlas Energy Systems,1,FY2024,operating_profit,1300000000.0,TRY,synthetic_financial_statement_FY2024_atlas_energy_systems,synthetic,1.0,True
+3,Atlas Energy Systems,1,FY2024,net_income,845000000.0,TRY,synthetic_financial_statement_FY2024_atlas_energy_systems,synthetic,1.0,True
+3,Atlas Energy Systems,1,FY2024,total_assets,18200000000.0,TRY,synthetic_financial_statement_FY2024_atlas_energy_systems,synthetic,1.0,True
+3,Atlas Energy Systems,1,FY2024,total_debt,7280000000.0,TRY,synthetic_financial_statement_FY2024_atlas_energy_systems,synthetic,1.0,True
+3,Atlas Energy Systems,1,FY2024,cash,1820000000.0,TRY,synthetic_financial_statement_FY2024_atlas_energy_systems,synthetic,1.0,True
+3,Atlas Energy Systems,1,FY2024,operating_cash_flow,1105000000.0,TRY,synthetic_financial_statement_FY2024_atlas_energy_systems,synthetic,1.0,True
+3,Atlas Energy Systems,2,FY2025,revenue,7020000000.0,TRY,synthetic_financial_statement_FY2025_atlas_energy_systems,synthetic,1.0,True
+3,Atlas Energy Systems,2,FY2025,gross_profit,2457000000.0,TRY,synthetic_financial_statement_FY2025_atlas_energy_systems,synthetic,1.0,True
+3,Atlas Energy Systems,2,FY2025,operating_profit,1404000000.0,TRY,synthetic_financial_statement_FY2025_atlas_energy_systems,synthetic,1.0,True
+3,Atlas Energy Systems,2,FY2025,net_income,912600000.0,TRY,synthetic_financial_statement_FY2025_atlas_energy_systems,synthetic,1.0,True
+3,Atlas Energy Systems,2,FY2025,total_assets,19656000000.0,TRY,synthetic_financial_statement_FY2025_atlas_energy_systems,synthetic,1.0,True
+3,Atlas Energy Systems,2,FY2025,total_debt,7862400000.0,TRY,synthetic_financial_statement_FY2025_atlas_energy_systems,synthetic,1.0,True
+3,Atlas Energy Systems,2,FY2025,cash,2162520000.0,TRY,synthetic_financial_statement_FY2025_atlas_energy_systems,synthetic,1.0,True
+3,Atlas Energy Systems,2,FY2025,operating_cash_flow,1186260000.0,TRY,synthetic_financial_statement_FY2025_atlas_energy_systems,synthetic,1.0,True

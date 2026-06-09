@@ -1,0 +1,44 @@
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+
+# Environments
+.env
+.venv/
+venv/
+env/
+
+# Jupyter
+.ipynb_checkpoints/
+
+# Data folders — raw inputs, extracted intermediates, and final outputs
+# are excluded from version control to avoid committing large or sensitive files.
+# .gitkeep files are explicitly kept so folder structure is tracked.
+data/raw_documents/*
+!data/raw_documents/.gitkeep
+
+data/processed_markdown/*
+!data/processed_markdown/.gitkeep
+
+data/extracted/*
+!data/extracted/.gitkeep
+
+data/final/*
+!data/final/.gitkeep
+
+# Databases
+*.sqlite
+*.db
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# IDE
+.vscode/
+.idea/
+
+# Claude Code local settings (contains machine-specific paths)
+.claude/
