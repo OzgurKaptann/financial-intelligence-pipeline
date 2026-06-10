@@ -2,7 +2,7 @@
 
 **Phase:** 2  
 **Branch:** phase-2-metabase-transforms  
-**Status:** Planning — Not Yet Implemented  
+**Status:** Complete  
 **Date:** 2026-06-10  
 
 ---
@@ -334,14 +334,39 @@ UNION ALL SELECT 'fact_risk_keyword', COUNT(*) FROM fact_risk_keyword;
 
 ---
 
-## 9. What Is NOT Done in This Phase
+## 9. Phase 2 Outcome
 
-- No Docker files are created yet. This document describes what they will contain.
-- No `docker-compose.yml` exists yet.
-- No PostgreSQL schema or data loader script exists yet.
-- No Metabase instance is running yet.
-- The MVP pipeline (`src/`, `sql/`) is not modified.
-- No cloud infrastructure is provisioned.
+All planned steps in this document were executed successfully. The
+experiment is complete as of 2026-06-10.
+
+**What was completed:**
+
+- Docker Compose stack running with three containers:
+  `financial_analytics_db` (PostgreSQL, port 5433),
+  `financial_metabase_app_db`, `financial_metabase` (Metabase, port 3000)
+- PostgreSQL analytics database created with schemas `raw`, `analytics`, `transforms`
+- All Phase 2 analytics tables created and populated via `src/load_postgres_analytics.py`
+- All seven table row-count validations passed (48 / 3 / 2 / 8 / 6 / 48 / 0)
+- Metabase connected to the analytics PostgreSQL database via the UI
+- Three saved SQL models created in Metabase:
+  - Transform 01 — Financial Metric Pivot
+  - Transform 02 — Financial KPI Model
+  - Transform 03 — Dashboard Mart
+- Financial Intelligence Dashboard created with four KPI cards
+- Dashboard screenshot saved to `metabase/screenshots/dashboard_overview.png`
+- The MVP pipeline (`src/`, `sql/`, SQLite) was not modified
+
+**What was not attempted in this phase:**
+
+- True materialized Metabase Transforms (models that write to a PostgreSQL table)
+- Row-by-row comparison of Transform 03 output against the MVP mart CSV
+- No cloud infrastructure was provisioned
+
+**Note on model type:** The three Metabase models are saved SQL
+questions/models used to simulate the transform flow. They execute as
+queries at read time and do not persist results to any table. The next
+optional improvement is to test true materialized Metabase Transforms or
+persist equivalent tables under the PostgreSQL `transforms` schema.
 
 ---
 
@@ -359,14 +384,20 @@ UNION ALL SELECT 'fact_risk_keyword', COUNT(*) FROM fact_risk_keyword;
 
 ---
 
-## 11. Files This Plan Will Produce (not created yet)
+## 11. Files Produced by This Plan
 
 | File | Status |
 |---|---|
-| `metabase/docker-compose.yml` | Not created — planned |
-| `metabase/.env` | Not created — planned (never commit) |
-| `src/phase2_load_postgres.py` | Not created — planned Phase 2 script |
-| `sql/phase2_postgres_schema.sql` | Not created — planned PostgreSQL DDL |
-| `metabase/screenshots/*.png` | Not created — captured during experiment |
+| `metabase/docker-compose.yml` | Created — Docker Compose stack (committed) |
+| `metabase/.env` | Created locally — never committed (gitignored) |
+| `metabase/.env.example` | Created — safe credential template (committed) |
+| `metabase/postgres/init/01_analytics_schema.sql` | Created — schema init on first container start |
+| `metabase/postgres/sql/02_create_analytics_tables.sql` | Created — idempotent DDL for all Phase 2 tables |
+| `metabase/postgres/sql/03_verify_loaded_data.sql` | Created — row-count verification query |
+| `src/load_postgres_analytics.py` | Created — Python data loader (replaces planned `phase2_load_postgres.py`) |
+| `metabase/transforms/01_financial_metric_pivot.sql` | Created — Metabase model source SQL |
+| `metabase/transforms/02_financial_kpi_model.sql` | Created — Metabase model source SQL |
+| `metabase/transforms/03_mart_company_financial_performance.sql` | Created — Metabase model source SQL |
+| `metabase/screenshots/dashboard_overview.png` | Captured — Financial Intelligence Dashboard |
 
 All existing MVP files remain unchanged.

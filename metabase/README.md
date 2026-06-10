@@ -97,33 +97,129 @@ metabase/
 - [x] Docker Compose file created (`metabase/docker-compose.yml`)
 - [x] Environment template created (`metabase/.env.example`)
 - [x] Analytics PostgreSQL init script created (`postgres/init/01_analytics_schema.sql`)
-- [ ] `metabase/.env` created locally from `.env.example` (local step — not committed)
-- [ ] PostgreSQL containers running and healthy
-- [ ] Metabase OSS container running and accessible at localhost:3000
-- [ ] Metabase connected to PostgreSQL analytics database via UI
+- [x] `metabase/.env` created locally from `.env.example` (local step — not committed)
+- [x] PostgreSQL containers running and healthy
+- [x] Metabase OSS container running and accessible at localhost:3000
+- [x] Metabase connected to PostgreSQL analytics database via UI
 
 **Data Loading**
 
 - [x] PostgreSQL table creation script written (`metabase/postgres/sql/02_create_analytics_tables.sql`)
 - [x] PostgreSQL data loader script written (`src/load_postgres_analytics.py`)
-- [ ] Data loader executed — tables populated and validation passed
+- [x] Data loader executed — all 7 table row counts passed validation
 
-**Transforms**
+**Transforms (Metabase saved SQL models)**
 
 - [x] Transform SQL files authored from MVP source SQL (PostgreSQL-compatible)
-- [ ] Transform 01 created and validated in Metabase UI (6 rows, 10 columns)
-- [ ] Transform 02 created and validated in Metabase UI (6 rows, 22 columns)
-- [ ] Transform 03 created and validated in Metabase UI (6 rows, 22 columns)
+- [x] Transform 01 — Financial Metric Pivot created and validated in Metabase UI
+- [x] Transform 02 — Financial KPI Model created and validated in Metabase UI
+- [x] Transform 03 — Dashboard Mart created and validated in Metabase UI
 
 **Validation**
 
-- [ ] Transform 03 output exported and compared row-by-row against MVP mart CSV
-- [ ] Any SQL dialect differences documented
+- [x] All three Metabase SQL models return correct results against the PostgreSQL analytics tables
+- [x] SQL dialect differences confirmed as none — PostgreSQL-compatible SQL worked as authored
 
 **Dashboard**
 
-- [ ] Dashboard built on top of Transform 03
-- [ ] Screenshots saved to `metabase/screenshots/`
+- [x] Financial Intelligence Dashboard created in Metabase
+- [x] Dashboard cards: Revenue by Company, Revenue Growth %, Debt and Cash Risk View, Profit Margin Comparison
+- [x] Screenshot saved to `metabase/screenshots/dashboard_overview.png`
+
+---
+
+## Phase 2 Result
+
+### What was successfully implemented
+
+The full Phase 2 experiment is complete. The following were built and verified:
+
+| Component | Detail |
+|---|---|
+| Docker Compose stack | Three containers running: `financial_analytics_db` (PostgreSQL 5433), `financial_metabase_app_db`, `financial_metabase` (localhost:3000) |
+| PostgreSQL analytics database | Schemas `raw`, `analytics`, `transforms` created; all Phase 2 tables populated |
+| Python data loader | `src/load_postgres_analytics.py` — idempotent, reads `metabase/.env`, loads CSV, populates star schema |
+| Metabase SQL models | Three saved SQL questions modelling the transform flow (see below) |
+| Metabase dashboard | Financial Intelligence Dashboard with four KPI cards |
+| Screenshot | `metabase/screenshots/dashboard_overview.png` |
+
+### What was validated
+
+The data loader printed all-PASS row counts on completion:
+
+| Table | Expected | Result |
+|---|---|---|
+| `raw.synthetic_financial_metrics` | 48 | PASS |
+| `analytics.dim_company` | 3 | PASS |
+| `analytics.dim_period` | 2 | PASS |
+| `analytics.dim_metric` | 8 | PASS |
+| `analytics.fact_document_source` | 6 | PASS |
+| `analytics.fact_financial_metric` | 48 | PASS |
+| `analytics.fact_risk_keyword` | 0 | PASS |
+
+All three Metabase SQL models returned correct results when run against the
+PostgreSQL analytics tables. No SQL dialect differences were found — the
+PostgreSQL-compatible SQL in `metabase/transforms/` worked as authored
+without modification.
+
+### Dashboard cards
+
+The Financial Intelligence Dashboard was built on top of Transform 03
+(Dashboard Mart) with four cards:
+
+- **FY2025 Revenue by Company** — bar chart comparing revenue across three companies
+- **FY2025 Revenue Growth %** — period-over-period growth rate per company
+- **FY2025 Debt and Cash Risk View** — debt/assets % and cash/debt % by company
+- **FY2025 Profit Margin Comparison** — gross, operating, and net margins side by side
+
+Screenshot: [`metabase/screenshots/dashboard_overview.png`](screenshots/dashboard_overview.png)
+
+### What remains manual inside Metabase UI
+
+The following artefacts live inside the running Metabase instance and are
+**not version-controlled**. They must be recreated manually if the Docker
+stack is reset with `docker compose down -v`:
+
+- The PostgreSQL analytics database connection (configured via Admin → Databases)
+- The three saved SQL models (Transform 01, 02, 03) created as Metabase questions
+- The Financial Intelligence Dashboard and its four question cards
+
+The SQL source for all three models is committed and reproducible:
+
+| Metabase model | Source file |
+|---|---|
+| Transform 01 — Financial Metric Pivot | `metabase/transforms/01_financial_metric_pivot.sql` |
+| Transform 02 — Financial KPI Model | `metabase/transforms/02_financial_kpi_model.sql` |
+| Transform 03 — Dashboard Mart | `metabase/transforms/03_mart_company_financial_performance.sql` |
+
+> **Note on model type:** These are currently Metabase saved SQL
+> questions/models used to simulate the transform flow. They execute as
+> queries at read time and do not persist results to any table. The next
+> optional improvement is to test true materialized Metabase Transforms or
+> persist equivalent tables under the PostgreSQL `transforms` schema.
+
+### What the next phase should be
+
+The natural next step is one of two options, depending on priority:
+
+**Option A — Materialize the transform output (recommended next experiment)**
+Write the Transform 03 result into `transforms.mart_company_financial_performance`
+as a PostgreSQL table. This can be done via:
+- A Python script that runs the mart SQL and writes the result using `pandas.to_sql`
+- Or by running `CREATE TABLE transforms.mart_company_financial_performance AS SELECT ...`
+  directly against the analytics PostgreSQL database
+
+This would let downstream Metabase questions and dashboards read from a
+persisted table rather than re-executing the full three-layer SQL chain on
+every dashboard load, and it mirrors how dbt materializations work.
+
+**Option B — Export and compare against MVP mart CSV**
+Download the Transform 03 result from Metabase and do a row-by-row comparison
+against `dashboard/mart_company_financial_performance.csv` (the MVP SQLite output).
+This validates that the PostgreSQL transform layer reproduces the SQLite pipeline
+exactly and closes the experiment with a documented parity result.
+
+Either option is additive — no MVP pipeline files need to be touched.
 
 ---
 
