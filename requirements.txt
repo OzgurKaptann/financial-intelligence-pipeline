@@ -3,3 +3,4 @@ numpy
 pytest
 jupyter
 python-dotenv
+psycopg2-binary

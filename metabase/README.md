@@ -75,8 +75,11 @@ metabase/
 ├── .env.example                           ← safe template — copy to .env and set passwords
 ├── .env                                   ← local credentials (gitignored — never committed)
 ├── postgres/
-│   └── init/
-│       └── 01_analytics_schema.sql        ← runs on first analytics_postgres start
+│   ├── init/
+│   │   └── 01_analytics_schema.sql        ← runs on first analytics_postgres start (schemas only)
+│   └── sql/
+│       ├── 02_create_analytics_tables.sql ← creates all Phase 2 raw + analytics tables
+│       └── 03_verify_loaded_data.sql      ← row-count verification query
 ├── transforms/
 │   ├── 01_financial_metric_pivot.sql      ← Transform 1: long → wide metric pivot
 │   ├── 02_financial_kpi_model.sql         ← Transform 2: KPI calculations
@@ -101,8 +104,9 @@ metabase/
 
 **Data Loading**
 
-- [ ] PostgreSQL schema created (tables: fact_financial_metric, dim_company, dim_period, dim_metric, fact_risk_keyword)
-- [ ] Synthetic data loaded from existing CSV exports into PostgreSQL
+- [x] PostgreSQL table creation script written (`metabase/postgres/sql/02_create_analytics_tables.sql`)
+- [x] PostgreSQL data loader script written (`src/load_postgres_analytics.py`)
+- [ ] Data loader executed — tables populated and validation passed
 
 **Transforms**
 
@@ -201,6 +205,113 @@ docker compose --env-file metabase/.env -f metabase/docker-compose.yml down -v
 
 Use `down` for normal stops. Use `down -v` only when you want to wipe all
 PostgreSQL data and start from scratch.
+
+---
+
+## Load Synthetic Data into PostgreSQL
+
+After completing the Docker setup (Steps 1–3 above), run the Phase 2 data
+loader to create all analytics tables and populate them from the synthetic CSV.
+
+### Step 1 — Ensure the Docker stack is running
+
+```bash
+docker compose --env-file metabase/.env -f metabase/docker-compose.yml ps
+```
+
+All three services should show `running (healthy)` or `Up`.
+If not, start the stack first (see Local Docker Setup → Step 2 above).
+
+### Step 2 — Install Python dependencies
+
+```bash
+pip install -r requirements.txt
+```
+
+This installs `psycopg2-binary` (and the other project dependencies) needed
+to connect to PostgreSQL from Python.
+
+### Step 3 — Run the data loader
+
+```bash
+# From the project root
+python src/load_postgres_analytics.py
+```
+
+The script will:
+1. Read connection credentials from `metabase/.env`
+2. Connect to the analytics PostgreSQL database on `localhost:5433`
+3. Execute `metabase/postgres/sql/02_create_analytics_tables.sql`
+   (drops and recreates all Phase 2 tables — idempotent)
+4. Load `data/synthetic/synthetic_financial_metrics.csv` into
+   `raw.synthetic_financial_metrics`
+5. Populate all analytics dimension and fact tables from the raw table
+6. Print a row-count validation report
+
+**Expected output:**
+
+```
+Phase 2 — PostgreSQL Analytics Data Loader
+================================================
+
+[1/5] Loading credentials from metabase/.env ...
+  Target: financial_analytics on localhost:5433
+
+[2/5] Connecting to PostgreSQL ...
+  Connected.
+
+[3/5] Creating Phase 2 analytics tables ...
+  Executed 02_create_analytics_tables.sql
+
+[4/5] Loading CSV into raw.synthetic_financial_metrics ...
+  Read 48 rows from synthetic_financial_metrics.csv
+  Inserted 48 rows into raw.synthetic_financial_metrics
+
+[5/5] Populating analytics dimension and fact tables ...
+  Populated analytics.dim_company — 3 rows inserted
+  Populated analytics.dim_period — 2 rows inserted
+  Populated analytics.dim_metric — 8 rows inserted
+  Populated analytics.fact_document_source — 6 rows inserted
+  Populated analytics.fact_financial_metric — 48 rows inserted
+
+--- Row Count Validation --------------------------------------------------
+  Table                                        Count  Expected  Status
+  ------------------------------------------------------------------
+  raw.synthetic_financial_metrics                 48        48  PASS
+  analytics.dim_company                            3         3  PASS
+  analytics.dim_period                             2         2  PASS
+  analytics.dim_metric                             8         8  PASS
+  analytics.fact_document_source                   6         6  PASS
+  analytics.fact_financial_metric                 48        48  PASS
+  analytics.fact_risk_keyword                      0         0  PASS
+  ------------------------------------------------------------------
+  All validation checks PASSED.
+
+Done.
+```
+
+The loader is idempotent — rerunning it drops and recreates tables, then
+reloads from the CSV. No duplicate rows will appear.
+
+### Step 4 — Verify with psql (optional)
+
+Run the verification SQL directly against the container:
+
+```bash
+docker exec -i financial_analytics_db psql \
+  -U analytics_user \
+  -d financial_analytics \
+  < metabase/postgres/sql/03_verify_loaded_data.sql
+```
+
+Or run a quick inline count check:
+
+```bash
+docker exec -i financial_analytics_db psql \
+  -U analytics_user \
+  -d financial_analytics \
+  -c "SELECT schemaname, tablename, n_live_tup AS rows FROM pg_stat_user_tables ORDER BY schemaname, tablename;"
+```
 
 ---
 
