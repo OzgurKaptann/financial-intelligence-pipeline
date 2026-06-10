@@ -57,6 +57,23 @@ The Financial Intelligence Dashboard was built directly on Transform 03 with fou
 
 > **The original MVP SQLite pipeline remains intact.** Phase 2 is an additive experiment — no MVP scripts, SQL files, or the SQLite database were modified.
 
+### Phase 2.1: Materialized Transform Mart
+
+The final dashboard mart (Transform 03) was materialized into a real PostgreSQL table
+under the `transforms` schema:
+
+```
+transforms.mart_company_financial_performance  — 6 rows (3 companies × 2 periods)
+```
+
+Run the materialization script (requires the Phase 2 Docker stack to be running):
+
+```bash
+python src/materialize_postgres_mart.py
+```
+
+See [`metabase/README.md`](metabase/README.md#phase-21-materialized-transform-mart) for full details.
+
 ---
 
 ## Business Problem

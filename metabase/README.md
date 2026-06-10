@@ -421,3 +421,65 @@ docker exec -i financial_analytics_db psql \
   Only the SQL transform files and screenshots are version-controlled.
 - See `docs/27_METABASE_IMPLEMENTATION_PLAN.md` for the full transform architecture plan.
 - See `docs/28_DOCKER_POSTGRES_METABASE_PLAN.md` for the Docker and PostgreSQL setup plan.
+
+---
+
+## Phase 2.1: Materialized Transform Mart
+
+The Metabase saved SQL model flow (Transform 03 — Dashboard Mart) was also persisted
+into PostgreSQL as a real database table.
+
+### Materialized table
+
+```
+transforms.mart_company_financial_performance
+```
+
+One row per company + period (6 rows). Columns: `company_name`, `period_id`,
+`fiscal_period`, `revenue`, `previous_revenue`, `revenue_growth_pct`,
+`gross_profit`, `gross_margin_pct`, `operating_profit`, `operating_margin_pct`,
+`net_income`, `net_margin_pct`, `total_assets`, `total_debt`, `debt_to_assets_pct`,
+`cash`, `cash_to_debt_pct`, `operating_cash_flow`,
+`operating_cash_flow_to_net_income`, `risk_keyword_count`.
+
+### How it works
+
+- `metabase/postgres/sql/04_create_transform_mart.sql` — drops and recreates the
+  table using the same CTE logic as Transform 03, sourcing from the analytics star
+  schema (`analytics.fact_financial_metric` and dimension tables).
+- `metabase/postgres/sql/05_verify_transform_mart.sql` — validation SQL that checks
+  row count, FY2025 revenue growth values, FY2024 NULL growth, and risk keyword
+  counts.
+
+### Run the materialization script
+
+```bash
+python src/materialize_postgres_mart.py
+```
+
+Expected output:
+
+```
+============================================================
+Phase 2.1: Materialize PostgreSQL Transform Mart
+============================================================
+
+[1/3] Loading credentials from metabase/.env ...
+  database : financial_analytics
+  host     : localhost:5433
+
+[2/3] Connecting to PostgreSQL and executing mart SQL ...
+  transforms.mart_company_financial_performance  created
+
+[3/3] Running validation checks ...
+  row count = 6  [PASS]  (expected 6)
+  FY2025 revenue_growth_pct  Atlas Energy Systems         = 8.0  [PASS]  (expected 8.0)
+  FY2025 revenue_growth_pct  Aurora Manufacturing         = 18.0  [PASS]  (expected 18.0)
+  FY2025 revenue_growth_pct  Nova Retail Group            = 12.0  [PASS]  (expected 12.0)
+  FY2024 revenue_growth_pct is NULL for all rows  [PASS]  (non-null count = 0, expected 0)
+  risk_keyword_count = 0 for all rows  [PASS]  (non-zero count = 0, expected 0)
+
+All validation checks PASSED.
+```
+
+The script is idempotent — safe to rerun at any time.
