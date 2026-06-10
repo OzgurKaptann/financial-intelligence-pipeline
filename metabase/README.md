@@ -71,6 +71,12 @@ described in `docs/28_DOCKER_POSTGRES_METABASE_PLAN.md` is running.
 ```
 metabase/
 ├── README.md                              ← this file
+├── docker-compose.yml                     ← Docker stack: Metabase + 2x PostgreSQL
+├── .env.example                           ← safe template — copy to .env and set passwords
+├── .env                                   ← local credentials (gitignored — never committed)
+├── postgres/
+│   └── init/
+│       └── 01_analytics_schema.sql        ← runs on first analytics_postgres start
 ├── transforms/
 │   ├── 01_financial_metric_pivot.sql      ← Transform 1: long → wide metric pivot
 │   ├── 02_financial_kpi_model.sql         ← Transform 2: KPI calculations
@@ -85,10 +91,13 @@ metabase/
 
 **Infrastructure**
 
-- [ ] Docker Compose file created for Metabase + PostgreSQL
-- [ ] PostgreSQL container running and accessible
+- [x] Docker Compose file created (`metabase/docker-compose.yml`)
+- [x] Environment template created (`metabase/.env.example`)
+- [x] Analytics PostgreSQL init script created (`postgres/init/01_analytics_schema.sql`)
+- [ ] `metabase/.env` created locally from `.env.example` (local step — not committed)
+- [ ] PostgreSQL containers running and healthy
 - [ ] Metabase OSS container running and accessible at localhost:3000
-- [ ] Metabase connected to PostgreSQL analytics database
+- [ ] Metabase connected to PostgreSQL analytics database via UI
 
 **Data Loading**
 
@@ -111,6 +120,87 @@ metabase/
 
 - [ ] Dashboard built on top of Transform 03
 - [ ] Screenshots saved to `metabase/screenshots/`
+
+---
+
+## Local Docker Setup
+
+> **Prerequisites:** Docker Desktop must be running. These commands do not start
+> Docker Desktop — they only start the containers defined in `docker-compose.yml`.
+
+### Step 1 — Create your local environment file
+
+```bash
+# From the project root (Windows CMD)
+copy metabase\.env.example metabase\.env
+
+# From the project root (PowerShell / Mac / Linux)
+cp metabase/.env.example metabase/.env
+```
+
+Open `metabase/.env` and replace the two `replace_me_*` password values with
+real local passwords. These passwords never leave your machine.
+
+### Step 2 — Start the stack
+
+```bash
+# Run from the project root
+docker compose --env-file metabase/.env -f metabase/docker-compose.yml up -d
+```
+
+This starts three containers in the background:
+- `financial_metabase_app_db` — PostgreSQL for Metabase metadata (port 5434)
+- `financial_analytics_db` — PostgreSQL for financial data (port 5433)
+- `financial_metabase` — Metabase OSS UI (port 3000)
+
+The analytics PostgreSQL init script runs automatically on first start and
+creates the `raw`, `analytics`, and `transforms` schemas.
+
+### Step 3 — Verify containers are running
+
+```bash
+docker compose --env-file metabase/.env -f metabase/docker-compose.yml ps
+```
+
+All three services should show `running (healthy)` or `Up` status.
+If `financial_metabase` shows `starting`, wait 30–60 seconds for Metabase to
+boot — it waits for `metabase_app_db` to be healthy before starting.
+
+### Step 4 — Open Metabase
+
+Navigate to `http://localhost:3000` in your browser. Complete the first-run
+setup wizard. When asked about a database, skip or select "I'll add my data
+later" — the analytics PostgreSQL connection is added separately.
+
+### Step 5 — Connect analytics PostgreSQL in the Metabase UI
+
+After the setup wizard:
+
+1. Go to **Settings → Admin → Databases → Add database**.
+2. Select database type: **PostgreSQL**.
+3. Use these connection details:
+   - **Host:** `analytics_postgres` (Docker internal service name)
+   - **Port:** `5432` (internal Docker port — not 5433)
+   - **Database name:** value of `POSTGRES_ANALYTICS_DB` from your `.env`
+   - **Username:** value of `POSTGRES_ANALYTICS_USER`
+   - **Password:** value of `POSTGRES_ANALYTICS_PASSWORD`
+4. Click **Save** and verify the connection succeeds.
+
+> The host is `analytics_postgres` (the Docker service name), not `localhost`,
+> because Metabase connects from inside the Docker network.
+
+### Step 6 — Stop the stack
+
+```bash
+# Stop containers but keep data volumes (recommended)
+docker compose --env-file metabase/.env -f metabase/docker-compose.yml down
+
+# Stop containers AND delete all data volumes (full reset — irreversible)
+docker compose --env-file metabase/.env -f metabase/docker-compose.yml down -v
+```
+
+Use `down` for normal stops. Use `down -v` only when you want to wipe all
+PostgreSQL data and start from scratch.
 
 ---
 

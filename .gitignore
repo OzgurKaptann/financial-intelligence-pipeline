@@ -52,6 +52,9 @@ Thumbs.db
 metabase/.env
 metabase/.env.*
 
+# Keep the example template — it contains only placeholder values, no secrets
+!metabase/.env.example
+
 # Metabase local application state
 metabase/metabase.db
 metabase/metabase.db.*
