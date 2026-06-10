@@ -1,0 +1,134 @@
+# =============================================================================
+# Financial Intelligence Pipeline — Phase 2 Metabase Experiment
+#
+# Stack:
+#   metabase_app_db    — PostgreSQL for Metabase's own application metadata
+#   analytics_postgres — PostgreSQL for financial source tables and transforms
+#   metabase           — Metabase OSS UI (localhost:3000)
+#
+# Usage (from project root):
+#   docker compose --env-file metabase/.env -f metabase/docker-compose.yml up -d
+#
+# Usage (from inside metabase/ directory):
+#   docker compose --env-file .env up -d
+#
+# Environment variables:
+#   Copy metabase/.env.example to metabase/.env and set real passwords.
+#   Never commit metabase/.env.
+# =============================================================================
+
+services:
+
+  # ---------------------------------------------------------------------------
+  # metabase_app_db
+  # Stores Metabase's internal application state: users, questions, dashboards,
+  # collections, and settings. Using a dedicated PostgreSQL instead of
+  # Metabase's default embedded H2 database ensures state persists across
+  # container restarts and is production-grade.
+  # Host port 5434 is exposed for local debugging only.
+  # ---------------------------------------------------------------------------
+  metabase_app_db:
+    image: postgres:15
+    container_name: financial_metabase_app_db
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB:       ${POSTGRES_METABASE_DB}
+      POSTGRES_USER:     ${POSTGRES_METABASE_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_METABASE_PASSWORD}
+    ports:
+      - "${POSTGRES_METABASE_PORT:-5434}:5432"
+    volumes:
+      - pg_metabase_data:/var/lib/postgresql/data
+    networks:
+      - metabase_net
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_METABASE_USER} -d ${POSTGRES_METABASE_DB}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 15s
+
+  # ---------------------------------------------------------------------------
+  # analytics_postgres
+  # Stores the financial intelligence source tables (dim_company, dim_period,
+  # dim_metric, fact_financial_metric, fact_risk_keyword) and the output of
+  # Metabase Transforms. This is the database Metabase connects to for the
+  # Transforms experiment.
+  # Host port 5433 is exposed so psql, DBeaver, or a Python loader script can
+  # connect directly from the host without going through Metabase.
+  # Initialised with schemas (raw, analytics, transforms) on first start via
+  # the init script in postgres/init/.
+  # ---------------------------------------------------------------------------
+  analytics_postgres:
+    image: postgres:15
+    container_name: financial_analytics_db
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB:       ${POSTGRES_ANALYTICS_DB}
+      POSTGRES_USER:     ${POSTGRES_ANALYTICS_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_ANALYTICS_PASSWORD}
+    ports:
+      - "${POSTGRES_ANALYTICS_PORT:-5433}:5432"
+    volumes:
+      - pg_analytics_data:/var/lib/postgresql/data
+      - ./postgres/init:/docker-entrypoint-initdb.d:ro
+    networks:
+      - metabase_net
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_ANALYTICS_USER} -d ${POSTGRES_ANALYTICS_DB}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 15s
+
+  # ---------------------------------------------------------------------------
+  # metabase
+  # Metabase OSS. Configured to use metabase_app_db as its application database
+  # instead of the default embedded H2 file database.
+  # The analytics_postgres connection is added manually through the Metabase UI
+  # after first startup — it is not wired automatically here so that Metabase's
+  # first-run wizard remains the single point of database configuration.
+  # ---------------------------------------------------------------------------
+  metabase:
+    image: metabase/metabase:latest
+    container_name: financial_metabase
+    restart: unless-stopped
+    ports:
+      - "${METABASE_PORT:-3000}:3000"
+    environment:
+      # Tell Metabase to use PostgreSQL instead of the embedded H2 database
+      MB_DB_TYPE:   postgres
+      MB_DB_HOST:   metabase_app_db
+      MB_DB_PORT:   5432
+      MB_DB_DBNAME: ${POSTGRES_METABASE_DB}
+      MB_DB_USER:   ${POSTGRES_METABASE_USER}
+      MB_DB_PASS:   ${POSTGRES_METABASE_PASSWORD}
+    depends_on:
+      metabase_app_db:
+        condition: service_healthy
+    networks:
+      - metabase_net
+
+# =============================================================================
+# Named volumes
+# Named volumes are used for all PostgreSQL data directories to avoid
+# Windows host-path permission issues with bind mounts on Docker Desktop.
+# These volumes persist across `docker compose down` but are removed by
+# `docker compose down -v` (intentional full reset only).
+# =============================================================================
+volumes:
+  pg_metabase_data:
+    name: financial_pg_metabase_data
+  pg_analytics_data:
+    name: financial_pg_analytics_data
+
+# =============================================================================
+# Internal network
+# Both PostgreSQL containers and Metabase communicate on this private network.
+# Metabase references metabase_app_db and analytics_postgres by their service
+# names, not by localhost, because they are on the same Docker network.
+# =============================================================================
+networks:
+  metabase_net:
+    name: financial_metabase_net
+    driver: bridge

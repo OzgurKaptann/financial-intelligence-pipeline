@@ -42,3 +42,38 @@ Thumbs.db
 
 # Claude Code local settings (contains machine-specific paths)
 .claude/
+
+# =============================================================================
+# Phase 2 — Metabase + PostgreSQL + Docker experiment
+# =============================================================================
+
+# Local environment files (credentials — never commit)
+.env.*
+metabase/.env
+metabase/.env.*
+
+# Keep the example template — it contains only placeholder values, no secrets
+!metabase/.env.example
+
+# Metabase local application state
+metabase/metabase.db
+metabase/metabase.db.*
+metabase/plugins/
+metabase/logs/
+metabase/tmp/
+
+# Docker / PostgreSQL local volume data
+metabase_db/
+postgres_data/
+postgres_metabase_data/
+docker-data/
+volumes/
+
+# Generated Phase 2 exports and temp files
+metabase/exports/
+metabase/screenshots/*.png
+metabase/screenshots/*.jpg
+metabase/screenshots/*.jpeg
+
+# Keep the screenshots folder placeholder
+!metabase/screenshots/.gitkeep
