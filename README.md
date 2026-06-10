@@ -12,6 +12,53 @@ The pipeline is intentionally built around clarity, traceability, and reproducib
 
 ---
 
+## Phase 2: Metabase + PostgreSQL Analytics Experiment
+
+The MVP SQLite pipeline was extended with a self-contained Docker experiment
+that connects a live Metabase OSS instance to a PostgreSQL analytics database
+and builds a working financial intelligence dashboard on top of it.
+
+### What was built
+
+| Component | Detail |
+|---|---|
+| Docker Compose stack | Metabase OSS + PostgreSQL analytics DB + Metabase app DB, all local |
+| PostgreSQL analytics DB | Star schema mirroring the MVP — `raw`, `analytics`, and `transforms` schemas |
+| Python data loader | [`src/load_postgres_analytics.py`](src/load_postgres_analytics.py) — idempotent, reads `metabase/.env`, loads CSV, populates all tables |
+| DDL script | [`metabase/postgres/sql/02_create_analytics_tables.sql`](metabase/postgres/sql/02_create_analytics_tables.sql) — creates all Phase 2 tables with `NUMERIC` types and foreign keys |
+| Metabase SQL models | Three saved SQL models that simulate a layered transform flow |
+| Dashboard | Financial Intelligence Dashboard with four KPI cards |
+
+### Transform flow
+
+Three saved SQL models were created in Metabase against the PostgreSQL analytics database:
+
+| Model | Source SQL | Purpose |
+|---|---|---|
+| Transform 01 — Financial Metric Pivot | `metabase/transforms/01_financial_metric_pivot.sql` | Long → wide metric pivot (6 rows, 10 columns) |
+| Transform 02 — Financial KPI Model | `metabase/transforms/02_financial_kpi_model.sql` | KPI calculations — margins, leverage, growth (6 rows, 22 columns) |
+| Transform 03 — Dashboard Mart | `metabase/transforms/03_mart_company_financial_performance.sql` | Final mart identical in grain to the MVP SQLite mart |
+
+These are Metabase saved SQL questions used to simulate the transform flow. The SQL executes at query time; results are not yet materialized to the `transforms` schema.
+
+### Dashboard
+
+The Financial Intelligence Dashboard was built directly on Transform 03 with four cards:
+**FY2025 Revenue by Company** · **FY2025 Revenue Growth %** · **FY2025 Debt and Cash Risk View** · **FY2025 Profit Margin Comparison**
+
+![Metabase Financial Intelligence Dashboard](metabase/screenshots/dashboard_overview.png)
+
+### Key files
+
+- [`metabase/README.md`](metabase/README.md) — full setup and run instructions
+- [`docs/28_DOCKER_POSTGRES_METABASE_PLAN.md`](docs/28_DOCKER_POSTGRES_METABASE_PLAN.md) — architecture plan and outcome log
+- [`src/load_postgres_analytics.py`](src/load_postgres_analytics.py) — Python data loader
+- [`metabase/postgres/sql/02_create_analytics_tables.sql`](metabase/postgres/sql/02_create_analytics_tables.sql) — PostgreSQL DDL
+
+> **The original MVP SQLite pipeline remains intact.** Phase 2 is an additive experiment — no MVP scripts, SQL files, or the SQLite database were modified.
+
+---
+
 ## Business Problem
 
 A CFO, investment analyst, or BI team wants to compare multiple companies across reporting periods and answer questions such as:
@@ -73,12 +120,13 @@ Synthetic CSV / Real Financial Documents (future)
 |-------|-----------|
 | Language | Python 3.11+ |
 | Data processing | pandas |
-| Database | SQLite (via Python `sqlite3`) |
+| MVP database | SQLite (via Python `sqlite3`) |
+| Phase 2 database | PostgreSQL 15 (Docker) |
 | SQL modeling | Raw SQL with CTEs and window functions |
 | Reporting | Markdown (auto-generated) |
 | Path management | `pathlib` |
 | Testing | pytest (future) |
-| Dashboard (future) | Metabase or Power BI |
+| Dashboard | Metabase OSS (Phase 2 — Docker, localhost:3000) |
 
 No orchestration frameworks, no vector databases, no external APIs in the MVP.
 
@@ -119,6 +167,19 @@ financial-intelligence-pipeline/
 ├── reports/
 │   ├── validation_report.md    ← Auto-generated, 16 checks
 │   └── executive_summary.md    ← Auto-generated business narrative
+│
+├── metabase/                   ← Phase 2 Metabase + PostgreSQL experiment
+│   ├── README.md               ← Setup and run instructions for Phase 2
+│   ├── docker-compose.yml      ← Docker stack: Metabase OSS + 2× PostgreSQL
+│   ├── .env.example            ← Credential template (copy to .env locally)
+│   ├── postgres/
+│   │   ├── init/               ← Schema init script (runs on first container start)
+│   │   └── sql/
+│   │       ├── 02_create_analytics_tables.sql  ← Phase 2 DDL
+│   │       └── 03_verify_loaded_data.sql        ← Row-count verification
+│   ├── transforms/             ← PostgreSQL-compatible SQL for Metabase models
+│   └── screenshots/
+│       └── dashboard_overview.png
 │
 ├── docs/                       ← Full design documentation (25+ files)
 │
@@ -269,8 +330,8 @@ Full report: [reports/executive_summary.md](reports/executive_summary.md)
 1. **Synthetic data only.** All financial figures are generated, not extracted from real documents. They are internally consistent but not real.
 2. **Two periods only.** Revenue growth can only be calculated for FY2025 vs FY2024. Trend analysis is limited.
 3. **No real document ingestion yet.** PDF/Excel extraction, AI-assisted parsing, and confidence scoring are scoped for Phase 2.
-4. **SQLite only.** Suitable for local development. A production deployment would use PostgreSQL.
-5. **No dashboard connected.** The mart CSV is dashboard-ready but no BI tool is connected in the MVP.
+4. **SQLite for the MVP pipeline.** The core pipeline uses SQLite, suitable for local development. Phase 2 adds a PostgreSQL backend via Docker for the Metabase experiment.
+5. **Metabase state is not version-controlled.** The Phase 2 dashboard and saved SQL models exist inside the running Metabase instance. They must be recreated manually after a full Docker volume reset. The source SQL for all three models is committed under `metabase/transforms/`.
 6. **Currency is TRY.** All figures are in Turkish Lira. No FX conversion is applied.
 7. **Risk keyword count is 0.** The risk analysis module requires real document text. It is a placeholder in the MVP.
 
@@ -278,15 +339,18 @@ Full report: [reports/executive_summary.md](reports/executive_summary.md)
 
 ## Future Improvements
 
-### Phase 2 — Real Document Ingestion
+### Phase 2 — Metabase + PostgreSQL Experiment ✓ Complete
+See the [Phase 2 section above](#phase-2-metabase--postgresql-analytics-experiment) and [`metabase/README.md`](metabase/README.md).
+
+**Next optional step within Phase 2:** materialize Transform 03 output into
+`transforms.mart_company_financial_performance` as a real PostgreSQL table,
+and do a row-by-row comparison against the MVP mart CSV to confirm parity.
+
+### Phase 3 — Real Document Ingestion
 - PDF-to-Markdown conversion using `pymupdf` or `pdfplumber`
 - Structured metric extraction using Claude API or regex patterns
 - Confidence scoring and manual review queue for low-confidence extractions
 - Support for Excel and CSV financial workbooks
-
-### Phase 3 — Metabase Transforms Experiment
-Evaluate whether Metabase Transforms can reproduce the SQL mart layer currently built in `sql/03_financial_kpis.sql` and `sql/05_mart_company_financial_performance.sql`.  
-See [docs/25_METABASE_TRANSFORMS_EXPERIMENT.md](docs/25_METABASE_TRANSFORMS_EXPERIMENT.md) for the full experiment plan.
 
 ### Phase 4 — Expanded Coverage
 - More companies and periods
@@ -296,7 +360,6 @@ See [docs/25_METABASE_TRANSFORMS_EXPERIMENT.md](docs/25_METABASE_TRANSFORMS_EXPE
 - Automated anomaly detection
 
 ### Phase 5 — Production Deployment
-- PostgreSQL backend
 - dbt for SQL transformation management
 - Airflow or Prefect for pipeline orchestration
 - API layer for programmatic access
