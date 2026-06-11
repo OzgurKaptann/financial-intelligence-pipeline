@@ -21,6 +21,9 @@ data/raw_documents/*
 
 data/processed_markdown/*
 !data/processed_markdown/.gitkeep
+# Ignore generated Markdown outputs and the conversion manifest by default.
+# The .gitkeep preserves the folder in git.
+# To commit a sample manifest for demo purposes, explicitly git add it.
 
 data/extracted/*
 !data/extracted/.gitkeep
