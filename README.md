@@ -631,3 +631,35 @@ It shows how a small analytics team can build a traceable, reproducible financia
 | Reconciliation design | LEFT JOIN reconciliation, match rate reporting |
 | BI integration | Metabase OSS dashboard, native Transform evaluation |
 | Reproducibility | Single-command pipeline, Docker Compose stack, idempotent loaders |
+
+---
+
+## Türkçe Özet ve Durum Raporu
+
+Bu proje, finansal dokümanlardan gelen dağınık verileri uçtan uca işleyerek analiz edilebilir hale getiren bir financial intelligence pipeline çalışmasıdır.
+
+Amaç yalnızca bir dashboard oluşturmak değil; ham finansal dokümanlardan metrik çıkarma, bu metrikleri PostgreSQL veri ambarına yükleme, KPI mart tabloları üretme, sonuçları doğrulama ve Metabase dashboard katmanına hazır hale getirme sürecini göstermektir.
+
+Proje şu anda aşağıdaki akışı çalışır şekilde desteklemektedir:
+
+`raw financial document → MarkItDown → Markdown → metric extraction → PostgreSQL → KPI mart → reconciliation layer → Metabase-ready tables`
+
+Tamamlanan ana çalışmalar:
+
+- SQLite tabanlı MVP analytics pipeline kuruldu.
+- PostgreSQL ve Metabase ortamı Docker ile hazırlandı.
+- Finansal KPI mart tabloları oluşturuldu.
+- Microsoft MarkItDown ile doküman ingestion katmanı eklendi.
+- Markdown dosyalarından finansal metrik çıkarımı yapıldı.
+- Çıkarılan metrikler PostgreSQL'e yüklendi.
+- Document-derived KPI mart oluşturuldu.
+- Dokümandan gelen veriler benchmark mart ile reconciliation katmanında karşılaştırıldı.
+- Metabase native Transform yaklaşımı için dürüst bir değerlendirme dokümantasyonu eklendi.
+
+Mevcut durum:
+
+Proje teknik olarak document-to-warehouse-to-dashboard akışını uçtan uca göstermektedir. Şu anki odak, projeyi public portfolio, GitHub vitrini ve analytics engineering topluluğu için daha anlaşılır hale getirmektir.
+
+Kısa özetle:
+
+Bu repo; SQL, PostgreSQL, Python, MarkItDown, veri doğrulama, KPI modelleme, reconciliation ve Metabase odaklı BI hazırlığını bir araya getiren uçtan uca bir analytics engineering showcase projesidir.
