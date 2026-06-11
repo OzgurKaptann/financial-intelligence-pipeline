@@ -4,3 +4,11 @@ pytest
 jupyter
 python-dotenv
 psycopg2-binary
+
+# Phase 3 — MarkItDown document ingestion
+# markitdown[all] installs all optional format converters:
+#   PDF (pdfminer.six), DOCX (mammoth), XLSX/XLS (openpyxl + xlrd),
+#   PPTX (python-pptx), HTML (beautifulsoup4), images (pillow), audio, etc.
+# Using [all] keeps a single dependency line and avoids manually tracking
+# individual extras that change across MarkItDown releases.
+markitdown[all]

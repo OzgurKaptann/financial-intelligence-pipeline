@@ -76,6 +76,39 @@ See [`metabase/README.md`](metabase/README.md#phase-21-materialized-transform-ma
 
 ---
 
+## Phase 3: MarkItDown Document Ingestion
+
+Raw financial documents (PDFs, Excel workbooks, Word reports, PowerPoint slides)
+can now be converted to Markdown using Microsoft MarkItDown.
+
+### What this phase adds
+
+| Component | Detail |
+|-----------|--------|
+| [`src/document_converter.py`](src/document_converter.py) | Converts all supported files in `data/raw_documents/` to Markdown in `data/processed_markdown/` |
+| Conversion manifest | `data/processed_markdown/conversion_manifest.csv` — one row per file with status, error, and timestamp |
+| Supported formats | `.pdf` `.docx` `.pptx` `.xlsx` `.xls` `.csv` `.html` `.txt` `.md` |
+
+### How to run
+
+```bash
+# Place documents in data/raw_documents/ then:
+python src/document_converter.py
+```
+
+### Key points
+
+- This phase **only converts documents to Markdown text**. Financial metric extraction is not implemented yet.
+- Real documents are intentionally excluded from version control — `data/raw_documents/*` and `data/processed_markdown/*` are in `.gitignore`. Only `.gitkeep` files are committed.
+- The converter is idempotent: re-running overwrites previous outputs safely.
+- No data is sent to any external service. Conversion runs entirely locally.
+
+See [`docs/29_MARKITDOWN_DOCUMENT_INGESTION_PLAN.md`](docs/29_MARKITDOWN_DOCUMENT_INGESTION_PLAN.md) for the full architecture note.
+
+> **The MVP SQLite pipeline, PostgreSQL loader, and Docker Compose are not modified by Phase 3.**
+
+---
+
 ## Business Problem
 
 A CFO, investment analyst, or BI team wants to compare multiple companies across reporting periods and answer questions such as:
@@ -363,11 +396,16 @@ See the [Phase 2 section above](#phase-2-metabase--postgresql-analytics-experime
 `transforms.mart_company_financial_performance` as a real PostgreSQL table,
 and do a row-by-row comparison against the MVP mart CSV to confirm parity.
 
-### Phase 3 — Real Document Ingestion
-- PDF-to-Markdown conversion using `pymupdf` or `pdfplumber`
-- Structured metric extraction using Claude API or regex patterns
-- Confidence scoring and manual review queue for low-confidence extractions
-- Support for Excel and CSV financial workbooks
+### Phase 3 — MarkItDown Document Ingestion ✓ Complete
+Raw documents (.pdf, .docx, .xlsx, .pptx, .csv, .html) are converted to Markdown
+via `src/document_converter.py`. A conversion manifest is produced after each run.
+Real documents are gitignored. Metric extraction is the next step.
+
+### Phase 3 (next) — Metric Extraction from Markdown
+- Parse converted Markdown for financial line items using regex patterns
+- Structured output matching the data contract in `docs/05_DATA_CONTRACTS.md`
+- Confidence scoring and validation against existing KPI models
+- Claude API integration for low-confidence or ambiguous extractions
 
 ### Phase 4 — Expanded Coverage
 - More companies and periods
