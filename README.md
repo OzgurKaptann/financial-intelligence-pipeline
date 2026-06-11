@@ -1,14 +1,136 @@
 # AI-Assisted Financial Intelligence Pipeline
 
-> **Note — Synthetic Data:** The current MVP uses fully synthetic, clearly labelled financial data for three fictional Turkish companies. No real financial documents or real company data are used at this stage. Real document ingestion is scoped for a future phase.
+> **Note — Synthetic Data:** The current MVP uses fully synthetic, clearly labelled financial data for three fictional Turkish companies. The document ingestion pipeline (Phase 3+) uses a sample financial document containing `Demo Manufacturing` data, which is also clearly marked as synthetic.
+
+---
+
+## Project Story
+
+**What problem does this project solve?**
+Finance teams and BI engineers often receive raw financial documents — PDFs, Excel reports, Word files — and need to compare companies across reporting periods using consistent KPIs. Manually parsing these documents into structured metrics is error-prone and untraceable. This project automates that workflow end-to-end.
+
+**How does the data arrive?**
+Two parallel data paths feed the pipeline:
+- A synthetic data generator produces benchmark financial metrics for three fictional companies across two reporting periods.
+- Real (or sample) financial documents are dropped into `data/raw_documents/` and converted to Markdown via Microsoft MarkItDown.
+
+**How is the data processed?**
+The synthetic path loads directly into SQLite for the MVP, then into PostgreSQL for the analytics warehouse. The document path runs through deterministic regex-based metric extraction, producing a structured CSV from Markdown text.
+
+**How does it enter the warehouse?**
+Python loaders (idempotent, using `psycopg2`) write extracted metrics into the PostgreSQL `raw` schema. Analytics views are then built on top in the `analytics` schema.
+
+**How are KPIs produced?**
+PostgreSQL SQL scripts materialize KPI-ready transform marts under the `transforms` schema. KPIs include gross margin, operating margin, net margin, debt-to-assets, cash-to-debt, OCF margin, cash conversion, and a financial health flag.
+
+**How is validation handled?**
+Two validation layers exist: the SQLite MVP runs 16 automated checks on the mart table; the PostgreSQL document KPI mart runs 14 SQL-based PASS/FAIL checks against the materialized tables.
+
+**How does it connect to Metabase?**
+Metabase OSS runs locally via Docker and connects directly to the PostgreSQL analytics database. The `transforms` schema tables are the primary source for dashboard cards. A separate evaluation document assesses where native Metabase query-based Transforms could replace the current SQL-runner approach.
 
 ---
 
 ## Project Overview
 
-An end-to-end analytics engineering portfolio project that converts financial data into structured metrics, SQL-based KPI models, dashboard-ready datasets, validation reports, and executive summaries.
+This project builds an end-to-end financial intelligence pipeline that converts raw financial documents into structured financial metrics, loads them into PostgreSQL, materializes KPI-ready marts, validates the outputs, reconciles document-derived records against benchmark marts, and prepares the data for Metabase dashboards.
 
 The pipeline is intentionally built around clarity, traceability, and reproducibility rather than complexity. Every metric has a definition. Every transformation is traceable from source to final output. Every output can be explained to a non-technical stakeholder.
+
+---
+
+## Architecture Overview
+
+```mermaid
+flowchart TD
+    A[Raw Financial Document\n.pdf / .docx / .xlsx] --> B[Microsoft MarkItDown\nsrc/document_converter.py]
+    B --> C[Markdown\ndata/processed_markdown/]
+    C --> D[Metric Extraction\nsrc/extract_financial_metrics.py]
+    D --> E[Extracted CSV\ndata/extracted/extracted_financial_metrics.csv]
+    E --> F[PostgreSQL raw schema\nraw.extracted_financial_metrics]
+    F --> G[PostgreSQL analytics schema\nanalytics.document_extracted_financial_metric]
+    G --> H[PostgreSQL transforms schema\ntransforms.document_financial_metric_pivot]
+    H --> I[KPI Mart\ntransforms.mart_document_company_financial_performance]
+    I --> J[Reconciliation Layer\ntransforms.document_metric_reconciliation\ntransforms.document_kpi_reconciliation_summary]
+    J --> K[Metabase Dashboard\nlocalhost:3000]
+
+    L[Synthetic Data Generator\nsrc/synthetic_data_generator.py] --> M[SQLite MVP\ndata/final/financial_intelligence.sqlite]
+    M --> N[Benchmark Mart\ntransforms.mart_company_financial_performance]
+    N --> J
+    N --> K
+```
+
+---
+
+## Current Capabilities
+
+| Capability | Status | Detail |
+|---|---|---|
+| Synthetic benchmark financial data pipeline | ✓ Complete | 3 companies × 2 periods, 8 metrics, 16 validation checks |
+| SQLite MVP | ✓ Complete | Normalized schema, KPI mart, validation report, executive summary |
+| PostgreSQL analytics warehouse | ✓ Complete | `raw`, `analytics`, `transforms` schemas via Docker |
+| Metabase dashboard-ready marts | ✓ Complete | `transforms.mart_company_financial_performance` (synthetic benchmark) |
+| MarkItDown document ingestion | ✓ Complete | Converts PDF/DOCX/XLSX/PPTX to Markdown locally |
+| Markdown metric extraction | ✓ Complete | Deterministic regex extraction of 8 core financial metrics |
+| Document-derived PostgreSQL loading | ✓ Complete | Idempotent loader into `raw` and `analytics` schemas |
+| Document-derived KPI mart | ✓ Complete | `transforms.mart_document_company_financial_performance` with 7 KPI ratios |
+| Reconciliation layer | ✓ Complete | Document mart LEFT JOIN against synthetic benchmark mart |
+| Native Metabase Transform evaluation | ✓ Complete | Documentation-based evaluation of query-based Transform workflow |
+
+---
+
+## Metabase Positioning
+
+- **Metabase is the BI and dashboard layer.** It connects to the PostgreSQL analytics database and renders the `transforms` schema tables as dashboard cards.
+- **Transform logic is version-controlled outside Metabase.** SQL scripts in `metabase/postgres/sql/` and `metabase/transforms/` define all KPI models. Python runners in `src/` execute them against the live database.
+- **Native Metabase query-based Transforms are evaluated as a candidate workflow.** See [`docs/34_NATIVE_METABASE_TRANSFORM_EVALUATION.md`](docs/34_NATIVE_METABASE_TRANSFORM_EVALUATION.md) for the full assessment of where Metabase Transforms can complement or replace the current SQL-runner pattern.
+- **Not all transforms were created inside the Metabase UI.** The Phase 2 saved SQL models simulate a transform flow but execute at query time. Materialized transforms are created by the Python runners. The project is transparent about this distinction.
+
+---
+
+## How to Run the Full Local Pipeline
+
+### Prerequisites
+
+```powershell
+pip install -r requirements.txt
+```
+
+### 1 — Start Docker services
+
+```powershell
+docker compose --env-file metabase/.env -f metabase/docker-compose.yml up -d
+```
+
+### 2 — Run the full pipeline sequence
+
+```powershell
+# SQLite MVP (synthetic benchmark data)
+python src/run_pipeline.py
+
+# Convert raw financial documents to Markdown
+python src/document_converter.py
+
+# Extract structured metrics from Markdown
+python src/extract_financial_metrics.py
+
+# Load extracted metrics into PostgreSQL
+python src/load_extracted_metrics_postgres.py
+
+# Materialize document-derived KPI mart
+python src/materialize_document_kpi_mart.py
+
+# Materialize reconciliation layer
+python src/materialize_document_reconciliation.py
+```
+
+### 3 — Open Metabase
+
+Navigate to [http://localhost:3000](http://localhost:3000) and connect to the PostgreSQL analytics database.
+
+### Configuration
+
+All companies, periods, metrics, paths, and currency are defined in `src/config.py`. No other file should hardcode these values.
 
 ---
 
@@ -68,7 +190,7 @@ transforms.mart_company_financial_performance  — 6 rows (3 companies × 2 peri
 
 Run the materialization script (requires the Phase 2 Docker stack to be running):
 
-```bash
+```powershell
 python src/materialize_postgres_mart.py
 ```
 
@@ -91,7 +213,7 @@ can now be converted to Markdown using Microsoft MarkItDown.
 
 ### How to run
 
-```bash
+```powershell
 # Place documents in data/raw_documents/ then:
 python src/document_converter.py
 ```
@@ -124,7 +246,7 @@ metric rows using deterministic regex-based extraction. No LLM, no external APIs
 
 ### How to run
 
-```bash
+```powershell
 # After Phase 3 converter has produced .md files:
 python src/extract_financial_metrics.py
 ```
@@ -162,7 +284,7 @@ making extracted data ready for dashboarding in Metabase.
 
 ### How to run
 
-```bash
+```powershell
 # Requires Docker stack running and Phase 3.2 already loaded:
 python src/materialize_document_kpi_mart.py
 ```
@@ -199,7 +321,7 @@ differences, and report a match rate.
 
 ### How to run
 
-```bash
+```powershell
 # Requires Docker stack running, Phase 2.1 and Phase 3.3 already materialized:
 python src/materialize_document_reconciliation.py
 ```
@@ -266,35 +388,6 @@ These questions require converting unstructured financial documents into a consi
 
 ---
 
-## Architecture
-
-```
-Synthetic CSV / Real Financial Documents (future)
-        │
-        ▼
-  synthetic_data_generator.py
-  (or: document extractor — Phase 2)
-        │
-        ▼
-  database_loader.py
-  → SQLite: dim_company, dim_period, dim_metric,
-            fact_financial_metric, fact_document_source
-        │
-        ▼
-  SQL KPI Models
-  → sql/03_financial_kpis.sql
-  → sql/05_mart_company_financial_performance.sql
-        │
-        ▼
-  export_mart.py
-  → data/final/mart_company_financial_performance.csv
-        │
-        ├──▶  validation.py        → reports/validation_report.md
-        └──▶  report_generator.py  → reports/executive_summary.md
-```
-
----
-
 ## Data Flow
 
 | Step | Script | Input | Output |
@@ -304,6 +397,11 @@ Synthetic CSV / Real Financial Documents (future)
 | 3 | `export_mart.py` | SQLite + `sql/05_mart_company_financial_performance.sql` | `data/final/mart_company_financial_performance.csv` |
 | 4 | `validation.py` | Mart CSV | `reports/validation_report.md` |
 | 5 | `report_generator.py` | Mart CSV | `reports/executive_summary.md` |
+| 6 | `document_converter.py` | `data/raw_documents/` | `data/processed_markdown/*.md` |
+| 7 | `extract_financial_metrics.py` | `data/processed_markdown/*.md` | `data/extracted/extracted_financial_metrics.csv` |
+| 8 | `load_extracted_metrics_postgres.py` | Extracted CSV | PostgreSQL `raw` + `analytics` schemas |
+| 9 | `materialize_document_kpi_mart.py` | `analytics` schema | `transforms.mart_document_company_financial_performance` |
+| 10 | `materialize_document_reconciliation.py` | Both transform marts | `transforms.document_metric_reconciliation` |
 
 ---
 
@@ -314,12 +412,12 @@ Synthetic CSV / Real Financial Documents (future)
 | Language | Python 3.11+ |
 | Data processing | pandas |
 | MVP database | SQLite (via Python `sqlite3`) |
-| Phase 2 database | PostgreSQL 15 (Docker) |
+| Analytics warehouse | PostgreSQL 15 (Docker) |
 | SQL modeling | Raw SQL with CTEs and window functions |
+| Document ingestion | Microsoft MarkItDown |
 | Reporting | Markdown (auto-generated) |
 | Path management | `pathlib` |
-| Testing | pytest (future) |
-| Dashboard | Metabase OSS (Phase 2 — Docker, localhost:3000) |
+| Dashboard | Metabase OSS (Docker, localhost:3000) |
 
 No orchestration frameworks, no vector databases, no external APIs in the MVP.
 
@@ -335,46 +433,45 @@ financial-intelligence-pipeline/
 │   ├── processed_markdown/     ← Converted documents (not committed)
 │   ├── synthetic/              ← Synthetic CSV output
 │   │   └── synthetic_financial_metrics.csv
-│   ├── extracted/              ← AI-extracted metrics (future phase)
+│   ├── extracted/              ← Extracted metrics from documents (not committed)
 │   └── final/                  ← SQLite database + mart CSV (not committed)
 │       ├── financial_intelligence.sqlite
 │       └── mart_company_financial_performance.csv
 │
 ├── src/
-│   ├── config.py               ← All paths, companies, metrics, periods
+│   ├── config.py                          ← All paths, companies, metrics, periods
 │   ├── synthetic_data_generator.py
 │   ├── database_loader.py
 │   ├── export_mart.py
 │   ├── validation.py
 │   ├── report_generator.py
-│   └── run_pipeline.py         ← Single command to run everything
+│   ├── run_pipeline.py                    ← Single command for SQLite MVP
+│   ├── document_converter.py              ← MarkItDown document ingestion
+│   ├── extract_financial_metrics.py       ← Markdown metric extraction
+│   ├── load_extracted_metrics_postgres.py ← PostgreSQL loader for extracted metrics
+│   ├── materialize_document_kpi_mart.py   ← Document KPI mart runner
+│   └── materialize_document_reconciliation.py ← Reconciliation layer runner
 │
 ├── sql/
 │   ├── 01_schema.sql           ← Database schema + dimension seed data
 │   ├── 03_financial_kpis.sql   ← KPI calculation query (8 KPIs)
 │   └── 05_mart_company_financial_performance.sql  ← Dashboard mart view
 │
-├── dashboard/
-│   └── screenshots/            ← Dashboard previews (placeholder)
-│
-├── reports/
-│   ├── validation_report.md    ← Auto-generated, 16 checks
-│   └── executive_summary.md    ← Auto-generated business narrative
-│
-├── metabase/                   ← Phase 2 Metabase + PostgreSQL experiment
-│   ├── README.md               ← Setup and run instructions for Phase 2
+├── metabase/                   ← Metabase + PostgreSQL experiment
+│   ├── README.md               ← Setup and run instructions
 │   ├── docker-compose.yml      ← Docker stack: Metabase OSS + 2× PostgreSQL
 │   ├── .env.example            ← Credential template (copy to .env locally)
 │   ├── postgres/
 │   │   ├── init/               ← Schema init script (runs on first container start)
-│   │   └── sql/
-│   │       ├── 02_create_analytics_tables.sql  ← Phase 2 DDL
-│   │       └── 03_verify_loaded_data.sql        ← Row-count verification
+│   │   └── sql/                ← DDL scripts (02–11)
 │   ├── transforms/             ← PostgreSQL-compatible SQL for Metabase models
 │   └── screenshots/
 │       └── dashboard_overview.png
 │
-├── docs/                       ← Full design documentation (25+ files)
+├── docs/                       ← Full design documentation (35+ files)
+├── reports/
+│   ├── validation_report.md    ← Auto-generated, 16 checks
+│   └── executive_summary.md    ← Auto-generated business narrative
 │
 ├── tests/                      ← Test suite (future)
 ├── CLAUDE.md                   ← AI assistant instructions
@@ -385,53 +482,21 @@ financial-intelligence-pipeline/
 
 ---
 
-## How to Run
-
-### Prerequisites
-
-```bash
-pip install -r requirements.txt
-```
-
-### Run the full pipeline
-
-```bash
-python src/run_pipeline.py
-```
-
-This runs all five stages in sequence and stops immediately if any stage fails.
-
-### Run individual stages
-
-```bash
-python src/synthetic_data_generator.py
-python src/database_loader.py
-python src/export_mart.py
-python src/validation.py
-python src/report_generator.py
-```
-
-### Configuration
-
-All companies, periods, metrics, paths, and currency are defined in `src/config.py`. No other file should hardcode these values.
-
----
-
 ## Expected Outputs
 
-After a successful pipeline run:
+After a successful full pipeline run:
 
-| File | Description | Rows | Committed |
-|------|-------------|------|-----------|
+| File / Table | Description | Rows | Committed |
+|---|---|---|---|
 | `data/synthetic/synthetic_financial_metrics.csv` | Long-format raw metrics | 48 | Yes |
-| `data/final/financial_intelligence.sqlite` | Normalized SQLite database (6 tables) | — | **No** |
-| `data/final/mart_company_financial_performance.csv` | Dashboard-ready wide table | 6 | **No** |
+| `data/final/financial_intelligence.sqlite` | Normalized SQLite database (6 tables) | — | No |
+| `data/final/mart_company_financial_performance.csv` | Dashboard-ready wide table | 6 | No |
 | `reports/validation_report.md` | 16-check data quality report | — | Yes |
 | `reports/executive_summary.md` | Business narrative | — | Yes |
-
-The mart table has 6 rows (3 companies × 2 periods) and 22 columns (6 identifiers + 8 raw metrics + 8 KPIs).
-
-> **`data/final/` is excluded from version control.** The SQLite database and mart CSV are generated artifacts — they are not committed to the repository. Regenerate them at any time by running `python src/run_pipeline.py`.
+| `transforms.mart_company_financial_performance` | Synthetic benchmark KPI mart | 6 | — |
+| `transforms.mart_document_company_financial_performance` | Document-derived KPI mart | 1 (sample) | — |
+| `transforms.document_metric_reconciliation` | Document vs benchmark reconciliation | 1 (sample) | — |
+| `transforms.document_kpi_reconciliation_summary` | Aggregate reconciliation summary | 1 (sample) | — |
 
 ---
 
@@ -469,7 +534,7 @@ All KPIs use `NULLIF` in SQL to prevent division-by-zero errors. `revenue_growth
 
 ## Validation Summary
 
-The pipeline runs 16 automated data quality checks against the mart table:
+The pipeline runs 16 automated data quality checks against the SQLite mart table:
 
 | Category | Checks |
 |----------|--------|
@@ -515,91 +580,23 @@ Full report: [reports/executive_summary.md](reports/executive_summary.md)
 | Aurora Manufacturing | Industrials | Turkey | Fictional — synthetic data |
 | Nova Retail Group | Consumer Discretionary | Turkey | Fictional — synthetic data |
 | Atlas Energy Systems | Energy | Turkey | Fictional — synthetic data |
+| Demo Manufacturing | — | — | Sample document company — synthetic data |
 
 ---
 
 ## Limitations
 
-1. **Synthetic data only.** All financial figures are generated, not extracted from real documents. They are internally consistent but not real.
+1. **Synthetic data only.** All financial figures are generated or derived from sample documents, not real financial statements.
 2. **Two periods only.** Revenue growth can only be calculated for FY2025 vs FY2024. Trend analysis is limited.
-3. **No real document ingestion yet.** PDF/Excel extraction, AI-assisted parsing, and confidence scoring are scoped for Phase 2.
-4. **SQLite for the MVP pipeline.** The core pipeline uses SQLite, suitable for local development. Phase 2 adds a PostgreSQL backend via Docker for the Metabase experiment.
-5. **Metabase state is not version-controlled.** The Phase 2 dashboard and saved SQL models exist inside the running Metabase instance. They must be recreated manually after a full Docker volume reset. The source SQL for all three models is committed under `metabase/transforms/`.
-6. **Currency is TRY.** All figures are in Turkish Lira. No FX conversion is applied.
-7. **Risk keyword count is 0.** The risk analysis module requires real document text. It is a placeholder in the MVP.
+3. **SQLite for the MVP pipeline.** Suitable for local development. Phase 2 adds a PostgreSQL backend via Docker.
+4. **Metabase state is not version-controlled.** Dashboard cards and saved SQL models exist inside the running Metabase instance. The source SQL for all models is committed under `metabase/transforms/`.
+5. **Currency is TRY.** All synthetic figures are in Turkish Lira. No FX conversion is applied.
+6. **Risk keyword count is 0.** The risk analysis module requires real document text. It is a placeholder in the MVP.
+7. **Demo Manufacturing is unmatched.** The sample document company does not exist in the synthetic benchmark mart. This is expected and validates the reconciliation layer's handling of unmatched records.
 
 ---
 
 ## Future Improvements
-
-### Phase 2 — Metabase + PostgreSQL Experiment ✓ Complete
-See the [Phase 2 section above](#phase-2-metabase--postgresql-analytics-experiment) and [`metabase/README.md`](metabase/README.md).
-
-**Next optional step within Phase 2:** materialize Transform 03 output into
-`transforms.mart_company_financial_performance` as a real PostgreSQL table,
-and do a row-by-row comparison against the MVP mart CSV to confirm parity.
-
-### Phase 3 — MarkItDown Document Ingestion ✓ Complete
-Raw documents (.pdf, .docx, .xlsx, .pptx, .csv, .html) are converted to Markdown
-via `src/document_converter.py`. A conversion manifest is produced after each run.
-Real documents are gitignored. Metric extraction is the next step.
-
-### Phase 3.1 — Markdown Metric Extraction ✓ Complete
-Regex-based extraction from MarkItDown Markdown output. Produces
-`extracted_financial_metrics.csv` and `extraction_manifest.csv`.
-Supports 8 canonical metrics with multi-alias matching.
-
-### Phase 3.2 — Extracted Metrics PostgreSQL Load ✓ Complete
-Extracted Markdown metrics can now be loaded into PostgreSQL via
-`python src/load_extracted_metrics_postgres.py`. Three tables are created:
-`raw.extracted_financial_metrics`, `raw.extraction_manifest`, and
-`analytics.document_extracted_financial_metric`. This connects
-document-derived metrics to the analytics warehouse path and makes them
-available for querying in Metabase alongside Phase 2 synthetic data.
-See [`docs/31_EXTRACTED_METRICS_POSTGRES_LOAD_PLAN.md`](docs/31_EXTRACTED_METRICS_POSTGRES_LOAD_PLAN.md).
-
-### Phase 3.3 — Document-Derived KPI Mart ✓ Complete
-
-Document-derived financial metrics can now be materialized into KPI-ready PostgreSQL transform tables.
-
-Created tables:
-
-- `transforms.document_financial_metric_pivot`
-- `transforms.mart_document_company_financial_performance`
-
-The mart calculates:
-
-- gross margin %
-- operating margin %
-- net margin %
-- debt-to-assets %
-- cash-to-debt %
-- operating cash flow margin %
-- cash conversion %
-- financial health flag
-
-This completes the first working document-to-KPI mart flow:
-
-`raw document → MarkItDown → Markdown → extracted metrics → PostgreSQL → KPI mart`
-
-### Phase 4 — Document Metric Reconciliation ✓ Complete
-
-Document-derived KPI records can now be reconciled against the existing synthetic benchmark mart.
-
-Created tables:
-
-- `transforms.document_metric_reconciliation`
-- `transforms.document_kpi_reconciliation_summary`
-
-Current sample result:
-
-- `Demo Manufacturing` does not exist in the synthetic benchmark mart
-- match status: `unmatched_company_or_period`
-- matched records: `0`
-- unmatched records: `1`
-- match rate: `0.00%`
-
-This proves the reconciliation layer safely handles unmatched document-derived records.
 
 ### Phase 5 — Expanded Coverage
 
@@ -618,15 +615,51 @@ This proves the reconciliation layer safely handles unmatched document-derived r
 
 ---
 
-## Portfolio Message
+## Portfolio Summary
 
-This project demonstrates:
+This project demonstrates analytics engineering, SQL transformation design, PostgreSQL modeling, document ingestion via Microsoft MarkItDown, deterministic metric extraction, data validation, reconciliation between document-derived and benchmark data, and BI-readiness using Metabase.
 
-- Clean, layered data pipeline architecture (extract → load → transform → validate → report)
-- SQL-based KPI modeling with CTEs and window functions
-- Data contract enforcement and automated validation
-- Metric traceability from source CSV to executive summary
-- Professional documentation standards
-- Reproducible, single-command execution
+It shows how a small analytics team can build a traceable, reproducible financial intelligence workflow — from raw documents to validated KPI marts — without requiring heavy orchestration frameworks or external APIs.
 
-The pipeline produces outputs that are directly useful to a finance team: a validated mart table, a quality report, and a business narrative — without requiring any dashboard tool to be open.
+| Skill demonstrated | Where |
+|---|---|
+| Analytics engineering | SQL KPI models, materialized marts, layered schemas |
+| PostgreSQL modeling | `raw` → `analytics` → `transforms` schema design |
+| Document ingestion | Microsoft MarkItDown, conversion manifest |
+| Metric extraction | Deterministic regex pipeline, extraction manifest |
+| Data validation | 16-check SQLite validation + 14-check PostgreSQL mart validation |
+| Reconciliation design | LEFT JOIN reconciliation, match rate reporting |
+| BI integration | Metabase OSS dashboard, native Transform evaluation |
+| Reproducibility | Single-command pipeline, Docker Compose stack, idempotent loaders |
+
+---
+
+## Türkçe Özet ve Durum Raporu
+
+Bu proje, finansal dokümanlardan gelen dağınık verileri uçtan uca işleyerek analiz edilebilir hale getiren bir financial intelligence pipeline çalışmasıdır.
+
+Amaç yalnızca bir dashboard oluşturmak değil; ham finansal dokümanlardan metrik çıkarma, bu metrikleri PostgreSQL veri ambarına yükleme, KPI mart tabloları üretme, sonuçları doğrulama ve Metabase dashboard katmanına hazır hale getirme sürecini göstermektir.
+
+Proje şu anda aşağıdaki akışı çalışır şekilde desteklemektedir:
+
+`raw financial document → MarkItDown → Markdown → metric extraction → PostgreSQL → KPI mart → reconciliation layer → Metabase-ready tables`
+
+Tamamlanan ana çalışmalar:
+
+- SQLite tabanlı MVP analytics pipeline kuruldu.
+- PostgreSQL ve Metabase ortamı Docker ile hazırlandı.
+- Finansal KPI mart tabloları oluşturuldu.
+- Microsoft MarkItDown ile doküman ingestion katmanı eklendi.
+- Markdown dosyalarından finansal metrik çıkarımı yapıldı.
+- Çıkarılan metrikler PostgreSQL'e yüklendi.
+- Document-derived KPI mart oluşturuldu.
+- Dokümandan gelen veriler benchmark mart ile reconciliation katmanında karşılaştırıldı.
+- Metabase native Transform yaklaşımı için dürüst bir değerlendirme dokümantasyonu eklendi.
+
+Mevcut durum:
+
+Proje teknik olarak document-to-warehouse-to-dashboard akışını uçtan uca göstermektedir. Şu anki odak, projeyi public portfolio, GitHub vitrini ve analytics engineering topluluğu için daha anlaşılır hale getirmektir.
+
+Kısa özetle:
+
+Bu repo; SQL, PostgreSQL, Python, MarkItDown, veri doğrulama, KPI modelleme, reconciliation ve Metabase odaklı BI hazırlığını bir araya getiren uçtan uca bir analytics engineering showcase projesidir.
