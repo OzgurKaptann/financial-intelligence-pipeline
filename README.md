@@ -235,6 +235,23 @@ for the full plan, matching strategy, and next steps.
 
 ---
 
+## Phase 4.5 — Native Metabase Transform Evaluation
+
+The repository now includes a documentation-based evaluation of how the existing
+PostgreSQL-first transform marts could map to native Metabase query-based Transforms.
+
+See:
+
+- [`docs/34_NATIVE_METABASE_TRANSFORM_EVALUATION.md`](docs/34_NATIVE_METABASE_TRANSFORM_EVALUATION.md)
+
+This keeps the project positioning honest:
+
+- Transform logic is currently implemented with version-controlled PostgreSQL SQL scripts and Python runners.
+- Metabase is used as the dashboard and BI layer.
+- Native Metabase Transforms are evaluated as a candidate workflow for analyst-owned marts.
+
+---
+
 ## Business Problem
 
 A CFO, investment analyst, or BI team wants to compare multiple companies across reporting periods and answer questions such as:
