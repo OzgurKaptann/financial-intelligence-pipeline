@@ -442,6 +442,15 @@ Regex-based extraction from MarkItDown Markdown output. Produces
 `extracted_financial_metrics.csv` and `extraction_manifest.csv`.
 Supports 8 canonical metrics with multi-alias matching.
 
+### Phase 3.2 — Extracted Metrics PostgreSQL Load ✓ Complete
+Extracted Markdown metrics can now be loaded into PostgreSQL via
+`python src/load_extracted_metrics_postgres.py`. Three tables are created:
+`raw.extracted_financial_metrics`, `raw.extraction_manifest`, and
+`analytics.document_extracted_financial_metric`. This connects
+document-derived metrics to the analytics warehouse path and makes them
+available for querying in Metabase alongside Phase 2 synthetic data.
+See [`docs/31_EXTRACTED_METRICS_POSTGRES_LOAD_PLAN.md`](docs/31_EXTRACTED_METRICS_POSTGRES_LOAD_PLAN.md).
+
 ### Phase 4 — Load Extracted Metrics into the Pipeline
 - Validate extracted rows against the data contract in `docs/05_DATA_CONTRACTS.md`
 - Load into SQLite / PostgreSQL alongside or instead of synthetic data
