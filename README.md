@@ -109,6 +109,42 @@ See [`docs/29_MARKITDOWN_DOCUMENT_INGESTION_PLAN.md`](docs/29_MARKITDOWN_DOCUMEN
 
 ---
 
+## Phase 3.1: Markdown to Structured Financial Metrics
+
+Markdown outputs produced by Phase 3 can now be parsed into structured financial
+metric rows using deterministic regex-based extraction. No LLM, no external APIs.
+
+### What this phase adds
+
+| Component | Detail |
+|-----------|--------|
+| [`src/extract_financial_metrics.py`](src/extract_financial_metrics.py) | Reads `.md` files from `data/processed_markdown/`, extracts company, period, and 8 core metrics |
+| `data/extracted/extracted_financial_metrics.csv` | Long-format metric rows — one per extracted value |
+| `data/extracted/extraction_manifest.csv` | One row per source file with found/missing metrics and status |
+
+### How to run
+
+```bash
+# After Phase 3 converter has produced .md files:
+python src/extract_financial_metrics.py
+```
+
+### Key points
+
+- Extraction is **fully deterministic** — same input always produces the same output.
+- Supports labelled key-value patterns: `Revenue: 1,000,000`, `Company: Acme Corp`, `Period: FY2025`.
+- Handles comma/space thousands separators, currency symbols, and European decimal formats.
+- Files where company or period cannot be found are marked `failed` in the manifest; no rows are written for them.
+- Files where some metrics are missing still produce rows for the metrics that were found.
+- Generated CSV files are gitignored — only `.gitkeep` is committed.
+- This prepares real document data for future loading into the PostgreSQL pipeline.
+
+See [`docs/30_MARKDOWN_METRIC_EXTRACTION_PLAN.md`](docs/30_MARKDOWN_METRIC_EXTRACTION_PLAN.md) for supported aliases, output schema, and next steps.
+
+> **No changes to MVP SQLite pipeline, PostgreSQL loader, or Docker Compose.**
+
+---
+
 ## Business Problem
 
 A CFO, investment analyst, or BI team wants to compare multiple companies across reporting periods and answer questions such as:
@@ -401,10 +437,15 @@ Raw documents (.pdf, .docx, .xlsx, .pptx, .csv, .html) are converted to Markdown
 via `src/document_converter.py`. A conversion manifest is produced after each run.
 Real documents are gitignored. Metric extraction is the next step.
 
-### Phase 3 (next) — Metric Extraction from Markdown
-- Parse converted Markdown for financial line items using regex patterns
-- Structured output matching the data contract in `docs/05_DATA_CONTRACTS.md`
-- Confidence scoring and validation against existing KPI models
+### Phase 3.1 — Markdown Metric Extraction ✓ Complete
+Regex-based extraction from MarkItDown Markdown output. Produces
+`extracted_financial_metrics.csv` and `extraction_manifest.csv`.
+Supports 8 canonical metrics with multi-alias matching.
+
+### Phase 4 — Load Extracted Metrics into the Pipeline
+- Validate extracted rows against the data contract in `docs/05_DATA_CONTRACTS.md`
+- Load into SQLite / PostgreSQL alongside or instead of synthetic data
+- Compare extracted vs synthetic figures row by row
 - Claude API integration for low-confidence or ambiguous extractions
 
 ### Phase 4 — Expanded Coverage
