@@ -27,6 +27,8 @@ data/processed_markdown/*
 
 data/extracted/*
 !data/extracted/.gitkeep
+# Ignore generated extraction outputs (CSV, JSON, MD) by default.
+# Re-add explicitly with git add -f if you want to commit a sample for demo purposes.
 
 data/final/*
 !data/final/.gitkeep
