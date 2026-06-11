@@ -183,6 +183,58 @@ See [`docs/32_DOCUMENT_DERIVED_KPI_MART_PLAN.md`](docs/32_DOCUMENT_DERIVED_KPI_M
 
 ---
 
+## Phase 4: Document-Derived Metrics Reconciliation Layer
+
+Document-derived KPI records can now be reconciled against the existing
+synthetic benchmark mart to detect company-period matches, measure KPI
+differences, and report a match rate.
+
+### What this phase adds
+
+| Component | Detail |
+|-----------|--------|
+| [`metabase/postgres/sql/10_create_document_reconciliation.sql`](metabase/postgres/sql/10_create_document_reconciliation.sql) | Creates `transforms.document_metric_reconciliation` and `transforms.document_kpi_reconciliation_summary` |
+| [`metabase/postgres/sql/11_verify_document_reconciliation.sql`](metabase/postgres/sql/11_verify_document_reconciliation.sql) | 6 SQL validation checks against the reconciliation tables |
+| [`src/materialize_document_reconciliation.py`](src/materialize_document_reconciliation.py) | Executes reconciliation SQL, runs PASS/FAIL validation, idempotent |
+
+### How to run
+
+```bash
+# Requires Docker stack running, Phase 2.1 and Phase 3.3 already materialized:
+python src/materialize_document_reconciliation.py
+```
+
+### Key points
+
+- The reconciliation is a `LEFT JOIN` from the document mart to the synthetic
+  mart on `company_name` and `period_label`. All document records are preserved
+  regardless of match outcome.
+- `match_status` is `matched` when a synthetic row is found, or
+  `unmatched_company_or_period` when no synthetic row matches.
+- Difference fields (`revenue_difference`, `gross_margin_difference`, etc.) are
+  populated only for matched records. Unmatched records show NULL — which is
+  correct, not a failure.
+- **Current sample produces an unmatched status** because `Demo Manufacturing`
+  is not in the synthetic benchmark company set (`Aurora Manufacturing`,
+  `Nova Retail Group`, `Atlas Energy Systems`). This is **expected behavior**
+  and proves the reconciliation layer handles unmatched document records safely.
+- `match_rate_pct = 0.00` with `unmatched_records = 1` is the correct and
+  validated output for the current dataset.
+- All percentage differences use `NULLIF` to prevent division-by-zero.
+- Phase 2.1 and Phase 3.3 tables are not touched.
+
+### Tables created
+
+```
+transforms.document_metric_reconciliation         — 1 row (current sample)
+transforms.document_kpi_reconciliation_summary    — 1 row (aggregate summary)
+```
+
+See [`docs/33_DOCUMENT_RECONCILIATION_PLAN.md`](docs/33_DOCUMENT_RECONCILIATION_PLAN.md)
+for the full plan, matching strategy, and next steps.
+
+---
+
 ## Business Problem
 
 A CFO, investment analyst, or BI team wants to compare multiple companies across reporting periods and answer questions such as:

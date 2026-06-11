@@ -212,3 +212,25 @@ python src/materialize_document_kpi_mart.py
 3. **Add more documents.** Process additional financial documents covering multiple companies
    and periods to enable revenue growth, period-over-period trend analysis, and
    cross-company KPI benchmarking.
+
+---
+
+## Phase 4 Note
+
+Phase 4 builds a reconciliation layer on top of this document-derived KPI mart.
+
+`transforms.document_metric_reconciliation` joins this mart against the Phase 2.1
+synthetic benchmark mart (`transforms.mart_company_financial_performance`) to classify
+each document company-period as `matched` or `unmatched_company_or_period` and to
+compute KPI difference fields where a match exists.
+
+A companion summary table (`transforms.document_kpi_reconciliation_summary`) reports
+the overall match rate and average absolute differences across all reconciled records.
+
+The current sample (Demo Manufacturing FY2025) produces `match_rate_pct = 0.00` because
+the sample company name is not in the synthetic benchmark set. This is expected behavior —
+the reconciliation layer handles unmatched records safely and surfaces them explicitly
+rather than dropping or failing on them.
+
+See [`docs/33_DOCUMENT_RECONCILIATION_PLAN.md`](33_DOCUMENT_RECONCILIATION_PLAN.md) for
+the full Phase 4 plan and next steps.
