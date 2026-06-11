@@ -150,14 +150,34 @@ One row per Markdown file processed.
 
 ---
 
-## Next Phase: Load Extracted Metrics into the Pipeline
+## Phase 3.2: Load Extracted Metrics into PostgreSQL
 
-Phase 4 will add a loader that:
+Phase 3.2 loads `data/extracted/extracted_financial_metrics.csv` directly into PostgreSQL,
+connecting document-derived metrics to the analytics warehouse path.
 
-1. Reads `data/extracted/extracted_financial_metrics.csv`.
-2. Validates rows against the data contract in `docs/05_DATA_CONTRACTS.md`.
-3. Loads them into the existing SQLite database alongside or instead of synthetic data.
-4. Runs the existing SQL KPI models against real extracted values.
-5. Produces a side-by-side comparison report between synthetic and extracted figures.
+Three tables are created and populated:
 
-This will close the loop from raw financial document to validated KPI dashboard output.
+| Table | Layer | Purpose |
+|-------|-------|---------|
+| `raw.extracted_financial_metrics` | raw | Landing table — mirrors CSV, one row per extracted metric |
+| `raw.extraction_manifest` | raw | Document-level audit trail, one row per source file |
+| `analytics.document_extracted_financial_metric` | analytics | Clean analytics view, success rows only |
+
+Run with:
+
+```bash
+python src/load_extracted_metrics_postgres.py
+```
+
+See `docs/31_EXTRACTED_METRICS_POSTGRES_LOAD_PLAN.md` for full details.
+
+---
+
+## Next Phase: Integrate with Analytics Star Schema
+
+A future phase will:
+
+1. Validate rows against the data contract in `docs/05_DATA_CONTRACTS.md`.
+2. Align company and period keys between document-derived and synthetic data.
+3. Produce a side-by-side comparison between extracted and synthetic figures.
+4. Load validated extracted metrics into the existing star schema fact tables.
