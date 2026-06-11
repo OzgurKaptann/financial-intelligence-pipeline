@@ -169,7 +169,15 @@ python src/load_extracted_metrics_postgres.py
 
 ## Next Step
 
-Compare document-derived metrics against the synthetic data model:
+**Phase 3.3** builds KPI-ready transform mart tables from the loaded extracted metrics.
+`src/materialize_document_kpi_mart.py` executes `08_create_document_kpi_mart.sql` to create:
+
+- `transforms.document_financial_metric_pivot` — wide-format pivot of the 8 core metrics
+- `transforms.mart_document_company_financial_performance` — 7 calculated KPI ratios + financial health flag
+
+See [`docs/32_DOCUMENT_DERIVED_KPI_MART_PLAN.md`](32_DOCUMENT_DERIVED_KPI_MART_PLAN.md) for the full plan.
+
+After Phase 3.3, the next steps are:
 
 1. Add `company_name` and `period_label` alignment logic to map extracted values
    to `analytics.dim_company` and `analytics.dim_period` integer keys.

@@ -145,6 +145,44 @@ See [`docs/30_MARKDOWN_METRIC_EXTRACTION_PLAN.md`](docs/30_MARKDOWN_METRIC_EXTRA
 
 ---
 
+## Phase 3.3: Document-Derived KPI Mart
+
+Document-derived metrics can now be materialized into a KPI-ready PostgreSQL mart.
+Running `src/materialize_document_kpi_mart.py` pivots the long-format analytics table
+into wide columns and calculates 7 financial KPI ratios with a financial health flag —
+making extracted data ready for dashboarding in Metabase.
+
+### What this phase adds
+
+| Component | Detail |
+|-----------|--------|
+| [`metabase/postgres/sql/08_create_document_kpi_mart.sql`](metabase/postgres/sql/08_create_document_kpi_mart.sql) | Creates `transforms.document_financial_metric_pivot` and `transforms.mart_document_company_financial_performance` |
+| [`metabase/postgres/sql/09_verify_document_kpi_mart.sql`](metabase/postgres/sql/09_verify_document_kpi_mart.sql) | 14 SQL validation checks against the mart tables |
+| [`src/materialize_document_kpi_mart.py`](src/materialize_document_kpi_mart.py) | Executes mart SQL, runs PASS/FAIL validation, idempotent |
+
+### How to run
+
+```bash
+# Requires Docker stack running and Phase 3.2 already loaded:
+python src/materialize_document_kpi_mart.py
+```
+
+### Key points
+
+- Produces 7 KPI ratios: gross margin, operating margin, net margin, debt/assets,
+  cash/debt, OCF margin, and cash conversion percentage.
+- Each company-period is classified with a `financial_health_flag`:
+  `stable`, `negative_income`, `high_debt`, or `low_cash_buffer`.
+- All divisions use `NULLIF` to return NULL safely on zero denominators.
+- Phase 2.1 table `transforms.mart_company_financial_performance` is **not touched**.
+- Document-derived and synthetic marts remain separate until key alignment is validated.
+
+See [`docs/32_DOCUMENT_DERIVED_KPI_MART_PLAN.md`](docs/32_DOCUMENT_DERIVED_KPI_MART_PLAN.md) for the full plan.
+
+> **The MVP SQLite pipeline, Phase 2 synthetic tables, and Docker Compose are not modified.**
+
+---
+
 ## Business Problem
 
 A CFO, investment analyst, or BI team wants to compare multiple companies across reporting periods and answer questions such as:
@@ -451,20 +489,48 @@ document-derived metrics to the analytics warehouse path and makes them
 available for querying in Metabase alongside Phase 2 synthetic data.
 See [`docs/31_EXTRACTED_METRICS_POSTGRES_LOAD_PLAN.md`](docs/31_EXTRACTED_METRICS_POSTGRES_LOAD_PLAN.md).
 
-### Phase 4 — Load Extracted Metrics into the Pipeline
-- Validate extracted rows against the data contract in `docs/05_DATA_CONTRACTS.md`
-- Load into SQLite / PostgreSQL alongside or instead of synthetic data
-- Compare extracted vs synthetic figures row by row
-- Claude API integration for low-confidence or ambiguous extractions
+### Phase 3.3 — Document-Derived KPI Mart ✓ Complete
 
-### Phase 4 — Expanded Coverage
+Document-derived financial metrics can now be materialized into KPI-ready PostgreSQL transform tables.
+
+Created tables:
+
+- `transforms.document_financial_metric_pivot`
+- `transforms.mart_document_company_financial_performance`
+
+The mart calculates:
+
+- gross margin %
+- operating margin %
+- net margin %
+- debt-to-assets %
+- cash-to-debt %
+- operating cash flow margin %
+- cash conversion %
+- financial health flag
+
+This completes the first working document-to-KPI mart flow:
+
+`raw document → MarkItDown → Markdown → extracted metrics → PostgreSQL → KPI mart`
+
+### Phase 4 — Integrate Document-Derived Metrics with Existing Analytics Pipeline
+
+- Validate extracted rows against the data contract in `docs/05_DATA_CONTRACTS.md`
+- Compare document-derived metrics against the synthetic benchmark mart
+- Create reconciliation checks between extracted and synthetic figures
+- Prepare a unified reporting layer for synthetic and document-derived data
+- Add low-confidence or ambiguous extraction handling
+
+### Phase 5 — Expanded Coverage
+
 - More companies and periods
 - Quarterly reporting periods
 - Multi-currency support with FX conversion
 - Peer comparison benchmarks
 - Automated anomaly detection
 
-### Phase 5 — Production Deployment
+### Phase 6 — Production Deployment
+
 - dbt for SQL transformation management
 - Airflow or Prefect for pipeline orchestration
 - API layer for programmatic access
